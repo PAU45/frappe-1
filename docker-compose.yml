@@ -1,0 +1,89 @@
+version: "3.8"
+
+services:
+  mariadb:
+    image: mariadb:10.11
+    container_name: frappe-mariadb
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-frappe}
+      MYSQL_USER: ${DB_USER:-frappe}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-frappe}
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis-cache:
+    image: redis:alpine
+    container_name: frappe-redis-cache
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-cache-data:/data
+
+  redis-queue:
+    image: redis:alpine
+    container_name: frappe-redis-queue
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-queue-data:/data
+
+  redis-socketio:
+    image: redis:alpine
+    container_name: frappe-redis-socketio
+    restart: unless-stopped
+    ports:
+      - "6381:6379"
+    volumes:
+      - redis-socketio-data:/data
+
+  frappe:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: frappe-web
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME:-frappe}
+      - DB_USER=${DB_USER:-frappe}
+      - DB_PASSWORD=${DB_PASSWORD:-frappe}
+      - REDIS_CACHE=redis://redis-cache:6379/0
+      - REDIS_QUEUE=redis://redis-queue:6379/1
+      - REDIS_SOCKETIO=redis://redis-socketio:6379/2
+      - FRAPPE_SITE=${FRAPPE_SITE:-site1.localhost}
+    volumes:
+      - frappe-sites:/home/frappe/frappe-bench/sites
+      - frappe-logs:/home/frappe/frappe-bench/logs
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis-cache:
+        condition: service_started
+      redis-queue:
+        condition: service_started
+      redis-socketio:
+        condition: service_started
+
+volumes:
+  mariadb-data:
+  redis-cache-data:
+  redis-queue-data:
+  redis-socketio-data:
+  frappe-sites:
+  frappe-logs:
