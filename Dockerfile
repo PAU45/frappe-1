@@ -63,6 +63,11 @@ RUN bench init --skip-redis-config-generation --frappe-branch version-15 frappe-
 
 COPY --chown=frappe:frappe setup_db_patch.py /home/frappe/frappe-bench/apps/frappe/frappe/database/postgres/setup_db.py
 
+RUN cd /home/frappe/frappe-bench/apps/frappe && \
+    sed -i 's|conn_string = f"postgresql://{user}:{password}@{host}:{port}/{db_name}"|conn_string = f"postgresql://{user}:{password}@{host}:{port}/{db_name}?sslmode=require"|g' frappe/database/__init__.py && \
+    sed -i 's|conn_string = f"postgresql://{user}@{host}:{port}/{db_name}"|conn_string = f"postgresql://{user}@{host}:{port}/{db_name}?sslmode=require"|g' frappe/database/__init__.py && \
+    sed -i 's|conn = psycopg2.connect(\*\*conn_settings)|conn_settings.setdefault("sslmode", "require")\n        conn = psycopg2.connect(**conn_settings)|g' frappe/database/postgres/database.py
+
 WORKDIR /home/frappe/frappe-bench
 
 USER root
