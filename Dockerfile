@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
 
 LABEL maintainer="paulin"
 LABEL description="Frappe/ERPNext for Render with PostgreSQL"
@@ -59,7 +59,7 @@ RUN python3 -m venv env && \
 
 ENV PATH="/home/frappe/env/bin:$PATH"
 
-RUN bench init --skip-redis-config-generation --frappe-branch version-16 frappe-bench
+RUN bench init --skip-redis-config-generation --frappe-branch version-15 frappe-bench
 
 COPY --chown=frappe:frappe setup_db_patch.py /home/frappe/frappe-bench/apps/frappe/frappe/database/postgres/setup_db.py
 
