@@ -14,7 +14,7 @@ SITE_NAME="paulo"
 
 export PGHOST="$DB_HOST"
 export PGPORT="$DB_PORT"
-export PGDATABASE="postgres"
+export PGDATABASE="$DB_NAME"
 export PGUSER="$DB_USER"
 export PGPASSWORD="$DB_PASSWORD"
 export PGSSLMODE=require
@@ -24,10 +24,6 @@ until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" 2>/dev/null; do
     sleep 3
 done
 echo "PostgreSQL is ready!"
-
-echo "Creating databases if not exists..."
-psql -c "CREATE DATABASE \"$DB_NAME\";" 2>/dev/null || true
-psql -c "CREATE DATABASE \"$DB_USER\";" 2>/dev/null || true
 
 echo "Waiting for Redis on $REDIS_HOST..."
 until redis-cli -h "$REDIS_HOST" ping 2>/dev/null | grep -q PONG; do
@@ -46,15 +42,17 @@ cat > sites/common_site_config.json <<EOF
     "db_user": "$DB_USER",
     "db_password": "$DB_PASSWORD",
     "db_type": "postgres",
+    "db_socket": "",
     "redis_cache": "redis://$REDIS_HOST:6379/0",
     "redis_queue": "redis://$REDIS_HOST:6379/1",
-    "redis_socketio": "redis://$REDIS_HOST:6379/2"
+    "redis_socketio": "redis://$REDIS_HOST:6379/2",
+    "root_login": "$DB_USER",
+    "root_password": "$DB_PASSWORD"
 }
 EOF
 
 if [ ! -d "sites/$SITE_NAME" ]; then
     echo "Creating new Frappe site: $SITE_NAME"
-
     bench new-site "$SITE_NAME" \
         --db-type postgres \
         --db-host "$DB_HOST" \
