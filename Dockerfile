@@ -5,7 +5,7 @@ LABEL description="Frappe/ERPNext for Render with PostgreSQL"
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    FRAPPE_SITE=site1.localhost \
+    FRAPPE_SITE=paulo \
     DB_HOST=dpg-dadlkh67bikc73b97o00-a.virginia-postgres.render.com \
     DB_PORT=5432 \
     DB_NAME=frappe_db_xks5 \
@@ -59,6 +59,9 @@ RUN python3 -m venv env && \
 ENV PATH="/home/frappe/env/bin:$PATH"
 
 RUN bench init --skip-redis-config-generation --frappe-branch version-15 frappe-bench
+
+RUN cd /home/frappe/frappe-bench/apps/frappe && \
+    sed -i "s/cur_db_name=root_login/cur_db_name='postgres'/" frappe/database/postgres/setup_db.py
 
 WORKDIR /home/frappe/frappe-bench
 

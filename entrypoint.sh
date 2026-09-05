@@ -10,7 +10,7 @@ DB_USER="frappe_db_xks5_user"
 DB_PASSWORD="M7QS0C3X3QoNu0iaMlcGs9dUmvcnO3ns"
 REDIS_HOST="red-dadll7e7bikc73b9aac0"
 ADMIN_PASSWORD="2005"
-SITE_NAME="site1.localhost"
+SITE_NAME="paulo"
 
 export PGHOST="$DB_HOST"
 export PGPORT="$DB_PORT"
@@ -25,8 +25,9 @@ until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" 2>/dev/null; do
 done
 echo "PostgreSQL is ready!"
 
-echo "Creating database $DB_NAME if not exists..."
-psql -c "CREATE DATABASE $DB_NAME;" 2>/dev/null || true
+echo "Creating databases if not exists..."
+psql -c "CREATE DATABASE \"$DB_NAME\";" 2>/dev/null || true
+psql -c "CREATE DATABASE \"$DB_USER\";" 2>/dev/null || true
 
 echo "Waiting for Redis on $REDIS_HOST..."
 until redis-cli -h "$REDIS_HOST" ping 2>/dev/null | grep -q PONG; do
@@ -41,6 +42,10 @@ cat > sites/common_site_config.json <<EOF
 {
     "db_host": "$DB_HOST",
     "db_port": $DB_PORT,
+    "db_name": "$DB_NAME",
+    "db_user": "$DB_USER",
+    "db_password": "$DB_PASSWORD",
+    "db_type": "postgres",
     "redis_cache": "redis://$REDIS_HOST:6379/0",
     "redis_queue": "redis://$REDIS_HOST:6379/1",
     "redis_socketio": "redis://$REDIS_HOST:6379/2"
