@@ -4,42 +4,50 @@ set -e
 echo "=== Frappe/ERPNext Docker Entry Point ==="
 echo "Starting services..."
 
-# Wait for MariaDB
-echo "Waiting for MariaDB..."
-until mysqladmin ping -h "$DB_HOST" --silent 2>/dev/null; do
+# Wait for PostgreSQL
+echo "Waiting for PostgreSQL..."
+until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" 2>/dev/null; do
     sleep 2
 done
-echo "MariaDB is ready!"
+echo "PostgreSQL is ready!"
 
 # Wait for Redis
 echo "Waiting for Redis..."
-until redis-cli -h redis-cache ping 2>/dev/null | grep -q PONG; do
+until redis-cli -h "${REDIS_CACHE#redis://}" ping 2>/dev/null | grep -q PONG; do
     sleep 2
 done
 echo "Redis is ready!"
 
-# Create or update bench environment
 BENCH_DIR="/home/frappe/frappe-bench"
-SITES_DIR="$BENCH_DIR/sites"
 SITE_NAME="${FRAPPE_SITE:-site1.localhost}"
 
 cd "$BENCH_DIR"
 
-# Check if bench init is needed
-if [ ! -d "$SITES_DIR/$SITE_NAME" ]; then
-    echo "Setting up new Frappe site: $SITE_NAME"
+# Configure database
+export PGHOST="$DB_HOST"
+export PGPORT="$DB_PORT"
+export PGDATABASE="$DB_NAME"
+export PGUSER="$DB_USER"
+export PGPASSWORD="$DB_PASSWORD"
 
-    # Create site
+# Check if site exists
+if [ ! -d "sites/$SITE_NAME" ]; then
+    echo "Creating new Frappe site: $SITE_NAME"
+
     bench new-site "$SITE_NAME" \
-        --mariadb-root-password "${DB_ROOT_PASSWORD:-root}" \
+        --db-type postgres \
+        --db-host "$DB_HOST" \
+        --db-port "$DB_PORT" \
+        --db-name "$DB_NAME" \
+        --db-user "$DB_USER" \
+        --db-password "$DB_PASSWORD" \
         --admin-password "${ADMIN_PASSWORD:-admin}" \
         --no-mariadb-socket \
         --force
 
-    # Set site as default
     bench use "$SITE_NAME"
 
-    # Install ERPNext if available
+    # Install ERPNext
     if [ -d "apps/erpnext" ]; then
         echo "Installing ERPNext..."
         bench --site "$SITE_NAME" execute erpnext.installer.setup_erpnext || true
@@ -65,9 +73,8 @@ bench build --force || true
 
 echo "=== Starting Frappe web server ==="
 
-# Start the web server
 exec gunicorn \
-    --bind 0.0.0.0:8000 \
+    --bind 0.0.0.0:${PORT:-8000} \
     --workers "${GUNICORN_WORKERS:-4}" \
     --threads "${GUNICORN_THREADS:-4}" \
     --worker-class "${WORKERS_CLASS:-gthread}" \

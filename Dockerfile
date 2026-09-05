@@ -1,7 +1,7 @@
-FROM frappe/erpnext:v15
+FROM python:3.11-slim
 
 LABEL maintainer="paulin"
-LABEL description="Frappe/ERPNext for Render deployment"
+LABEL description="Frappe/ERPNext for Render with PostgreSQL"
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -17,16 +17,15 @@ ENV PYTHONUNBUFFERED=1 \
     SOCKETIO_PORT=9000 \
     WORKERS_CLASS=gthread \
     GUNICORN_WORKERS=4 \
-    GUNICORN_THREADS=4 \
-    WKHTMLTOPDF_VERSION=0.12.6
-
-USER root
+    GUNICORN_THREADS=4
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
-    wkhtmltopdf \
-    xvfb \
+    wget \
+    python3-dev \
+    python3-pip \
+    python3-venv \
     libffi-dev \
     libjpeg-dev \
     liblcms2-dev \
@@ -35,15 +34,45 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     libtiff5-dev \
     libwebp-dev \
+    libpq-dev \
+    postgresql-client \
     redis-tools \
+    wkhtmltopdf \
+    xvfb \
+    cron \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+RUN npm install -g yarn
+
+RUN useradd -ms /bin/bash frappe
+
+USER frappe
+WORKDIR /home/frappe
+
+RUN python3 -m venv env && \
+    . env/bin/activate && \
+    pip install --upgrade pip && \
+    pip install frappe-bench
+
+ENV PATH="/home/frappe/env/bin:$PATH"
+
+RUN bench init --skip-redis-config-generation --frappe-branch version-15 frappe-bench
+
 WORKDIR /home/frappe/frappe-bench
+
+RUN bench set-config -g db_host $DB_HOST && \
+    bench set-config -g db_port $DB_PORT && \
+    bench set-config -g db_name $DB_NAME && \
+    bench set-config -g db_password $DB_PASSWORD
+
+USER root
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 8000 9000
+
+USER frappe
 
 ENTRYPOINT ["/entrypoint.sh"]
