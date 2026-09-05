@@ -1,4 +1,4 @@
-FROM frappe/erpnext:v15.44.2
+FROM frappe/erpnext:v15
 
 LABEL maintainer="paulin"
 LABEL description="Frappe/ERPNext for Render deployment"
