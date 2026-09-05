@@ -15,6 +15,7 @@ ENV PYTHONUNBUFFERED=1 \
     REDIS_QUEUE=redis://red-dadll7e7bikc73b9aac0:6379 \
     REDIS_SOCKETIO=redis://red-dadll7e7bikc73b9aac0:6379 \
     ADMIN_PASSWORD=2005 \
+    PGSSLMODE=require \
     WORKERS_CLASS=gthread \
     GUNICORN_WORKERS=4 \
     GUNICORN_THREADS=4
