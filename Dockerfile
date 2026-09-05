@@ -63,20 +63,10 @@ RUN bench init --skip-redis-config-generation --frappe-branch version-15 frappe-
 
 COPY --chown=frappe:frappe setup_db_patch.py /home/frappe/frappe-bench/apps/frappe/frappe/database/postgres/setup_db.py
 
-RUN cd /home/frappe/frappe-bench/apps/frappe && \
+COPY --chown=frappe:frappe patch_ssl.py /tmp/patch_ssl.py
+RUN python3 /tmp/patch_ssl.py && \
     sed -i 's|conn_string = f"postgresql://{user}:{password}@{host}:{port}/{db_name}"|conn_string = f"postgresql://{user}:{password}@{host}:{port}/{db_name}?sslmode=require"|g' frappe/database/__init__.py && \
-    sed -i 's|conn_string = f"postgresql://{user}@{host}:{port}/{db_name}"|conn_string = f"postgresql://{user}@{host}:{port}/{db_name}?sslmode=require"|g' frappe/database/__init__.py && \
-    python3 -c "
-import re
-with open('frappe/database/postgres/database.py', 'r') as f:
-    content = f.read()
-content = content.replace(
-    'conn = psycopg2.connect(**conn_settings)',
-    'conn_settings.setdefault(\"sslmode\", \"require\")\n\t\t    conn = psycopg2.connect(**conn_settings)'
-)
-with open('frappe/database/postgres/database.py', 'w') as f:
-    f.write(content)
-"
+    sed -i 's|conn_string = f"postgresql://{user}@{host}:{port}/{db_name}"|conn_string = f"postgresql://{user}@{host}:{port}/{db_name}?sslmode=require"|g' frappe/database/__init__.py
 
 WORKDIR /home/frappe/frappe-bench
 
