@@ -42,9 +42,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
 
 RUN useradd -ms /bin/bash frappe
 
-RUN mkdir -p /var/run/mysqld /var/run/redis && \
-    chown mysql:mysql /var/run/mysqld && \
-    chown redis:redis /var/run/redis
+RUN mkdir -p /var/run/mysqld && chown mysql:mysql /var/run/mysqld && chmod 755 /var/run/mysqld
+
+RUN mysql_install_db --user=mysql --datadir=/var/lib/mysql > /dev/null 2>&1
 
 USER frappe
 WORKDIR /home/frappe
@@ -60,16 +60,11 @@ RUN bench init --skip-redis-config-generation --frappe-branch version-15 frappe-
 
 WORKDIR /home/frappe/frappe-bench
 
-RUN echo '[localhost]\nskip_name_resolve\ncharacter-set-server=utf8mb4\ncollation-server=utf8mb4_unicode_ci\ndefault-storage-engine=InnoDB\ninnodb_buffer_pool_size=256M\ninnodb_log_file_size=64M\nmax_connections=100\n' > /tmp/mariadb.cnf && \
-    cp /tmp/mariadb.cnf /home/frappe/frappe-bench/sites/mariadb.cnf
-
 USER root
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 8000
-
-USER frappe
 
 ENTRYPOINT ["/entrypoint.sh"]
