@@ -66,7 +66,17 @@ COPY --chown=frappe:frappe setup_db_patch.py /home/frappe/frappe-bench/apps/frap
 RUN cd /home/frappe/frappe-bench/apps/frappe && \
     sed -i 's|conn_string = f"postgresql://{user}:{password}@{host}:{port}/{db_name}"|conn_string = f"postgresql://{user}:{password}@{host}:{port}/{db_name}?sslmode=require"|g' frappe/database/__init__.py && \
     sed -i 's|conn_string = f"postgresql://{user}@{host}:{port}/{db_name}"|conn_string = f"postgresql://{user}@{host}:{port}/{db_name}?sslmode=require"|g' frappe/database/__init__.py && \
-    sed -i 's|conn = psycopg2.connect(\*\*conn_settings)|conn_settings.setdefault("sslmode", "require")\n        conn = psycopg2.connect(**conn_settings)|g' frappe/database/postgres/database.py
+    python3 -c "
+import re
+with open('frappe/database/postgres/database.py', 'r') as f:
+    content = f.read()
+content = content.replace(
+    'conn = psycopg2.connect(**conn_settings)',
+    'conn_settings.setdefault(\"sslmode\", \"require\")\n\t\t    conn = psycopg2.connect(**conn_settings)'
+)
+with open('frappe/database/postgres/database.py', 'w') as f:
+    f.write(content)
+"
 
 WORKDIR /home/frappe/frappe-bench
 
