@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 LABEL maintainer="paulin"
 LABEL description="Frappe/ERPNext for Render with PostgreSQL"
