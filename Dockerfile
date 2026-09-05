@@ -62,11 +62,6 @@ RUN bench init --skip-redis-config-generation --frappe-branch version-15 frappe-
 
 WORKDIR /home/frappe/frappe-bench
 
-RUN bench set-config -g db_host $DB_HOST && \
-    bench set-config -g db_port $DB_PORT && \
-    bench set-config -g db_name $DB_NAME && \
-    bench set-config -g db_password $DB_PASSWORD
-
 USER root
 
 COPY entrypoint.sh /entrypoint.sh
