@@ -65,8 +65,8 @@ COPY --chown=frappe:frappe setup_db_patch.py /home/frappe/frappe-bench/apps/frap
 
 COPY --chown=frappe:frappe patch_ssl.py /tmp/patch_ssl.py
 RUN python3 /tmp/patch_ssl.py && \
-    sed -i 's|conn_string = f"postgresql://{user}:{password}@{host}:{port}/{db_name}"|conn_string = f"postgresql://{user}:{password}@{host}:{port}/{db_name}?sslmode=require"|g' frappe/database/__init__.py && \
-    sed -i 's|conn_string = f"postgresql://{user}@{host}:{port}/{db_name}"|conn_string = f"postgresql://{user}@{host}:{port}/{db_name}?sslmode=require"|g' frappe/database/__init__.py
+    sed -i 's|conn_string = f"postgresql://{user}:{password}@{host}:{port}/{db_name}"|conn_string = f"postgresql://{user}:{password}@{host}:{port}/{db_name}?sslmode=require"|g' /home/frappe/frappe-bench/apps/frappe/frappe/database/__init__.py && \
+    sed -i 's|conn_string = f"postgresql://{user}@{host}:{port}/{db_name}"|conn_string = f"postgresql://{user}@{host}:{port}/{db_name}?sslmode=require"|g' /home/frappe/frappe-bench/apps/frappe/frappe/database/__init__.py
 
 WORKDIR /home/frappe/frappe-bench
 
