@@ -3,31 +3,28 @@ set -e
 
 echo "=== Frappe/ERPNext Docker Entry Point ==="
 
-echo "DB_HOST: $DB_HOST"
-echo "DB_PORT: $DB_PORT"
-echo "DB_NAME: $DB_NAME"
-echo "DB_USER: $DB_USER"
+DB_HOST="dpg-dadlkh67bikc73b97o00-a.virginia-postgres.render.com"
+DB_PORT="5432"
+DB_NAME="frappe_db_xks5"
+DB_USER="frappe_db_xks5_user"
+DB_PASSWORD="M7QS0C3X3QoNu0iaMlcGs9dUmvcnO3ns"
+REDIS_HOST="red-dadll7e7bikc73b9aac0"
+ADMIN_PASSWORD="2005"
+SITE_NAME="site1.localhost"
 
-# Wait for PostgreSQL
 echo "Waiting for PostgreSQL on $DB_HOST:$DB_PORT..."
 until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" 2>/dev/null; do
-    echo "PostgreSQL not ready yet, retrying in 3s..."
     sleep 3
 done
 echo "PostgreSQL is ready!"
 
-# Wait for Redis
-REDIS_HOST=$(echo "$REDIS_CACHE" | sed -e 's|redis://||' -e 's|:.*||')
 echo "Waiting for Redis on $REDIS_HOST..."
 until redis-cli -h "$REDIS_HOST" ping 2>/dev/null | grep -q PONG; do
-    echo "Redis not ready yet, retrying in 3s..."
     sleep 3
 done
 echo "Redis is ready!"
 
 BENCH_DIR="/home/frappe/frappe-bench"
-SITE_NAME="${FRAPPE_SITE:-site1.localhost}"
-
 cd "$BENCH_DIR"
 
 export PGHOST="$DB_HOST"
@@ -46,16 +43,11 @@ if [ ! -d "sites/$SITE_NAME" ]; then
         --db-name "$DB_NAME" \
         --db-user "$DB_USER" \
         --db-password "$DB_PASSWORD" \
-        --admin-password "${ADMIN_PASSWORD:-admin}" \
+        --admin-password "$ADMIN_PASSWORD" \
         --no-mariadb-socket \
         --force
 
     bench use "$SITE_NAME"
-
-    if [ -d "apps/erpnext" ]; then
-        echo "Installing ERPNext..."
-        bench --site "$SITE_NAME" execute erpnext.installer.setup_erpnext || true
-    fi
 
     echo "Site setup complete!"
 else
