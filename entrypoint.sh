@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 echo "=== Frappe/ERPNext Docker Entry Point ==="
 
@@ -12,11 +12,21 @@ REDIS_HOST="red-dadll7e7bikc73b9aac0"
 ADMIN_PASSWORD="2005"
 SITE_NAME="site1.localhost"
 
+export PGHOST="$DB_HOST"
+export PGPORT="$DB_PORT"
+export PGDATABASE="postgres"
+export PGUSER="$DB_USER"
+export PGPASSWORD="$DB_PASSWORD"
+export PGSSLMODE=require
+
 echo "Waiting for PostgreSQL on $DB_HOST:$DB_PORT..."
-until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" 2>/dev/null; do
+until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" 2>/dev/null; do
     sleep 3
 done
 echo "PostgreSQL is ready!"
+
+echo "Creating database $DB_NAME if not exists..."
+psql -c "CREATE DATABASE $DB_NAME;" 2>/dev/null || true
 
 echo "Waiting for Redis on $REDIS_HOST..."
 until redis-cli -h "$REDIS_HOST" ping 2>/dev/null | grep -q PONG; do
@@ -27,11 +37,15 @@ echo "Redis is ready!"
 BENCH_DIR="/home/frappe/frappe-bench"
 cd "$BENCH_DIR"
 
-export PGHOST="$DB_HOST"
-export PGPORT="$DB_PORT"
-export PGDATABASE="$DB_NAME"
-export PGUSER="$DB_USER"
-export PGPASSWORD="$DB_PASSWORD"
+cat > sites/common_site_config.json <<EOF
+{
+    "db_host": "$DB_HOST",
+    "db_port": $DB_PORT,
+    "redis_cache": "redis://$REDIS_HOST:6379/0",
+    "redis_queue": "redis://$REDIS_HOST:6379/1",
+    "redis_socketio": "redis://$REDIS_HOST:6379/2"
+}
+EOF
 
 if [ ! -d "sites/$SITE_NAME" ]; then
     echo "Creating new Frappe site: $SITE_NAME"
@@ -47,7 +61,6 @@ if [ ! -d "sites/$SITE_NAME" ]; then
         --force
 
     bench use "$SITE_NAME"
-
     echo "Site setup complete!"
 else
     echo "Site $SITE_NAME already exists, skipping setup."
