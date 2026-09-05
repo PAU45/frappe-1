@@ -2,19 +2,26 @@
 set -e
 
 echo "=== Frappe/ERPNext Docker Entry Point ==="
-echo "Starting services..."
+
+echo "DB_HOST: $DB_HOST"
+echo "DB_PORT: $DB_PORT"
+echo "DB_NAME: $DB_NAME"
+echo "DB_USER: $DB_USER"
 
 # Wait for PostgreSQL
-echo "Waiting for PostgreSQL..."
-until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" 2>/dev/null; do
-    sleep 2
+echo "Waiting for PostgreSQL on $DB_HOST:$DB_PORT..."
+until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" 2>/dev/null; do
+    echo "PostgreSQL not ready yet, retrying in 3s..."
+    sleep 3
 done
 echo "PostgreSQL is ready!"
 
 # Wait for Redis
-echo "Waiting for Redis..."
-until redis-cli -h "${REDIS_CACHE#redis://}" ping 2>/dev/null | grep -q PONG; do
-    sleep 2
+REDIS_HOST=$(echo "$REDIS_CACHE" | sed -e 's|redis://||' -e 's|:.*||')
+echo "Waiting for Redis on $REDIS_HOST..."
+until redis-cli -h "$REDIS_HOST" ping 2>/dev/null | grep -q PONG; do
+    echo "Redis not ready yet, retrying in 3s..."
+    sleep 3
 done
 echo "Redis is ready!"
 
@@ -23,14 +30,12 @@ SITE_NAME="${FRAPPE_SITE:-site1.localhost}"
 
 cd "$BENCH_DIR"
 
-# Configure database
 export PGHOST="$DB_HOST"
 export PGPORT="$DB_PORT"
 export PGDATABASE="$DB_NAME"
 export PGUSER="$DB_USER"
 export PGPASSWORD="$DB_PASSWORD"
 
-# Check if site exists
 if [ ! -d "sites/$SITE_NAME" ]; then
     echo "Creating new Frappe site: $SITE_NAME"
 
@@ -47,7 +52,6 @@ if [ ! -d "sites/$SITE_NAME" ]; then
 
     bench use "$SITE_NAME"
 
-    # Install ERPNext
     if [ -d "apps/erpnext" ]; then
         echo "Installing ERPNext..."
         bench --site "$SITE_NAME" execute erpnext.installer.setup_erpnext || true
@@ -59,19 +63,16 @@ else
     bench use "$SITE_NAME"
 fi
 
-# Run migrations
 echo "Running migrations..."
 bench --site "$SITE_NAME" migrate || true
 
-# Clear cache
 echo "Clearing cache..."
 bench --site "$SITE_NAME" clear-cache || true
 
-# Build assets
 echo "Building assets..."
 bench build --force || true
 
-echo "=== Starting Frappe web server ==="
+echo "=== Starting Frappe web server on port ${PORT:-8000} ==="
 
 exec gunicorn \
     --bind 0.0.0.0:${PORT:-8000} \
