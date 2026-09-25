@@ -54,16 +54,28 @@ fi
 # Handle Codespace hostname - add to site hosts so Frappe recognizes it
 if [ -n "$CODESPACE_NAME" ] && [ -n "$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN" ]; then
     CODESPACE_HOSTNAME="${CODESPACE_NAME}-8000.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
-    echo "Adding Codespace hostname to site: $CODESPACE_HOSTNAME"
-    bench --site "$SITE_NAME" add-to-hosts "$CODESPACE_HOSTNAME" || true
-    # Create logs directory for this hostname
+    echo "Codespace hostname: $CODESPACE_HOSTNAME"
+    
+    # Add hostname to site config
+    bench --site "$SITE_NAME" add-to-hosts "$CODESPACE_HOSTNAME" 2>&1 || echo "add-to-hosts failed, continuing..."
+    
+    # Force create logs directory for this hostname (Frappe expects it here)
     mkdir -p "sites/$CODESPACE_HOSTNAME/logs"
+    echo "Created logs dir: sites/$CODESPACE_HOSTNAME/logs"
 fi
 
 # Also handle generic hostname from HOSTNAME env
 if [ -n "$HOSTNAME" ] && [ "$HOSTNAME" != "localhost" ]; then
     mkdir -p "sites/$HOSTNAME/logs"
 fi
+
+# Debug: show site config
+echo "=== Site config for $SITE_NAME ==="
+cat "sites/$SITE_NAME/site_config.json" 2>/dev/null || echo "No site_config.json"
+
+# Debug: list sites dir
+echo "=== Sites directory ==="
+ls -la sites/
 
 bench --site "$SITE_NAME" migrate
 bench --site "$SITE_NAME" clear-cache
